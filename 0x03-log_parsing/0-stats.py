@@ -1,34 +1,45 @@
 #!/usr/bin/python3
-"""a script that reads stdin line by line and computes metrics"""
-
 import sys
+import re
 
-total_size = 0
-count_status_code = {}
+def compute_stats(lines):
+    total_size = 0
+    status_counts = {200: 0, 301: 0, 400: 0, 401: 0, 403: 0, 404: 0, 405: 0, 500: 0}
 
-for line in sys.stdin:
-    try:
-        _, _, _, _, _,status_code, file_size = line.strip().split()
-
-        # Converting file size to an int
-        file_size = int(file_size)
-
-        # Updating total file size
-        total_size += file_size
-
-        # Update status code counts
-        if status_code.isdigit():
+    for line in lines:
+        match = re.match(r'^(\d+\.\d+\.\d+\.\d+) - \[(.*?)\] "GET /projects/260 HTTP/1\.1" (\d+) (\d+)$', line)
+        if match:
+            _, _, status_code, file_size = match.groups()
             status_code = int(status_code)
-            count_status_code[status_code] = count_status_code.get(status_code, 0) + 1
+            file_size = int(file_size)
 
-        if len(count_status_code) % 10 == 0:
-            print("File size: {}".format(total_size))
-            for code in sorted(count_status_code.keys()):
-                print("code: {}".format(count_status_code[code]))
+            total_size += file_size
+            if status_code in status_counts:
+                status_counts[status_code] += 1
+        else:
+            print(f"Skipping line: {line.strip()}")
 
-    except ValueError:
-        pass
+    return total_size, status_counts
 
-print("File size: {}".format(total_size))
-for code in sorted(count_status_code.keys()):
-    print("code: {}".format(count_status_code[code]))
+def main():
+    lines = []
+    try:
+        for i, line in enumerate(sys.stdin):
+            lines.append(line.strip())
+            if (i + 1) % 10 == 0:
+                total_size, status_counts = compute_stats(lines)
+                print(f"File size: {total_size}")
+                for status, count in sorted(status_counts.items()):
+                    if count > 0:
+                        print(f"{status}: {count}")
+                print()
+                lines = []
+    except KeyboardInterrupt:
+        total_size, status_counts = compute_stats(lines)
+        print(f"File size: {total_size}")
+        for status, count in sorted(status_counts.items()):
+            if count > 0:
+                print(f"{status}: {count}")
+
+if __name__ == "__main__":
+    main()
