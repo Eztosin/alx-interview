@@ -1,8 +1,19 @@
 #!/usr/bin/python3
+"""Reads stdin line by line and computes metrics."""
+
 import sys
 import re
 
 def compute_stats(lines):
+    """Computes statistics from the given lines.
+
+    Args:
+        lines (list): List of log lines to process.
+
+    Returns:
+        tuple: A tuple containing the total file size and a dictionary
+               with status code counts.
+    """
     total_size = 0
     status_counts = {200: 0, 301: 0, 400: 0, 401: 0, 403: 0, 404: 0, 405: 0, 500: 0}
 
@@ -22,6 +33,7 @@ def compute_stats(lines):
     return total_size, status_counts
 
 def main():
+    """Main function to read lines from stdin and compute metrics."""
     lines = []
     try:
         for i, line in enumerate(sys.stdin):
@@ -40,6 +52,7 @@ def main():
         for status, count in sorted(status_counts.items()):
             if count > 0:
                 print(f"{status}: {count}")
+
 
 if __name__ == "__main__":
     main()
