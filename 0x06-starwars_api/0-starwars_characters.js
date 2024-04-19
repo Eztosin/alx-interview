@@ -1,23 +1,36 @@
 #!/usr/bin/node
-import fetch from 'node-fetch';
+
+const request = require('request');
 
 async function getMovieCharacters (movieId) {
-  try {
-    const response = await fetch(`https://swapi.dev/api/films/${movieId}/`);
-    const movieData = await response.json();
-    const characters = movieData.characters;
+  return new Promise((resolve, reject) => {
+    request(`https://swapi.dev/api/films/${movieId}/`, (error, response, body) => {
+      if (error) {
+        console.error(`Error fetching movie data for Movie ID ${movieId}: ${error.message}`);
+        reject(new Error(`Error fetching movie data for Movie ID ${movieId}`));
+      } else {
+        const movieData = JSON.parse(body);
+        const characters = movieData.characters;
 
-    const characterNames = await Promise.all(characters.map(async (characterUrl) => {
-      const characterResponse = await fetch(characterUrl);
-      const characterData = await characterResponse.json();
-      return characterData.name;
-    }));
-
-    return characterNames;
-  } catch (error) {
-    console.error(`Error fetching movie data for Movie ID ${movieId}`);
-    process.exit(1);
-  }
+        Promise.all(characters.map((characterUrl) => {
+          return new Promise((resolveChar, rejectChar) => {
+            request(characterUrl, (charError, charResponse, charBody) => {
+              if (charError) {
+                rejectChar(new Error(`Error fetching character data for URL ${characterUrl}`));
+              } else {
+                const characterData = JSON.parse(charBody);
+                resolveChar(characterData.name);
+              }
+            });
+          });
+        })).then((characterNames) => {
+          resolve(characterNames);
+        }).catch((err) => {
+          reject(err);
+        });
+      }
+    });
+  });
 }
 
 async function main () {
